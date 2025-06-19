@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swayam Library</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            line-height: 1.6;
+        }
+        /* Custom modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 90%;
+            width: 400px;
+            text-align: center;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-6xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 text-center">Swayam Library</h1>
+        <p id="currentUserId" class="text-sm text-gray-600 text-center mb-6 break-words">Your User ID: Loading...</p>
+
+        <!-- Notification for requests -->
+        <div id="requestNotification" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md shadow-sm" role="alert">
+            <p class="font-bold">New Book Request!</p>
+            <p>You have <span id="pendingRequestsCount">0</span> pending book requests.</p>
+            <button id="viewRequestsBtn" class="mt-2 text-sm bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-md transition duration-150 ease-in-out">
+                View Requests
+            </button>
+        </div>
+
+        <!-- Add Book Section -->
+        <div class="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200 shadow-sm">
+            <h2 class="text-2xl font-semibold text-blue-800 mb-4">Add a New Book</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="bookTitleInput" class="block text-sm font-medium text-gray-700 mb-1">Book Title</label>
+                    <input type="text" id="bookTitleInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="The Great Gatsby">
+                </div>
+                <div>
+                    <label for="bookAuthorInput" class="block text-sm font-medium text-gray-700 mb-1">Author</label>
+                    <input type="text" id="bookAuthorInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="F. Scott Fitzgerald">
+                </div>
+                 <div>
+                    <label for="ownerNameInput" class="block text-sm font-medium text-gray-700 mb-1">Your Name (as Book Owner)</label>
+                    <input type="text" id="ownerNameInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Your Name">
+                </div>
+            </div>
+            <button id="addBookBtn" class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                Add Book to Library
+            </button>
+        </div>
+
+        <!-- My Books Section -->
+        <div class="mb-8 p-6 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
+            <h2 class="text-2xl font-semibold text-purple-800 mb-4">My Books</h2>
+            <div id="myBooksList" class="space-y-4">
+                <p id="noMyBooksMessage" class="text-gray-500 text-center">You haven't added any books yet.</p>
+            </div>
+        </div>
+
+        <!-- All Available Books Section -->
+        <div class="mb-8 p-6 bg-green-50 rounded-lg border border-green-200 shadow-sm">
+            <h2 class="text-2xl font-semibold text-green-800 mb-4">All Available Books (for Request)</h2>
+            <div id="availableBooksList" class="space-y-4">
+                <p id="noAvailableBooksMessage" class="text-gray-500 text-center">No books currently available for request from other users.</p>
+            </div>
+        </div>
+
+        <!-- My Issued Books Section -->
+        <div class="mb-8 p-6 bg-indigo-50 rounded-lg border border-indigo-200 shadow-sm">
+            <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Books Issued To Me</h2>
+            <div id="myIssuedBooksList" class="space-y-4">
+                <p id="noIssuedBooksMessage" class="text-gray-500 text-center">You currently have no books issued to you.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <p id="modalMessage" class="text-lg font-medium text-gray-800"></p>
+            <div class="modal-buttons">
+                <button id="modalConfirmBtn" class="px-5 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition duration-150 ease-in-out">Confirm</button>
+                <button id="modalCancelBtn" class="px-5 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md hover:bg-gray-400 transition duration-150 ease-in-out">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Request Management Modal -->
+    <div id="requestsModal" class="modal">
+        <div class="modal-content w-full sm:w-1/2 max-w-2xl">
+            <span class="close-button" id="closeRequestsModalBtn">&times;</span>
+            <h3 class="text-2xl font-bold text-gray-900 mb-4">Pending Book Requests</h3>
+            <div id="pendingRequestsList" class="space-y-4 max-h-96 overflow-y-auto">
+                <p id="noPendingRequestsMessage" class="text-gray-500 text-center">No pending requests at the moment.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration and Initialization
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let userName = ''; // To store the user's name if they add books
+
+        // UI Elements
+        const currentUserIdDisplay = document.getElementById('currentUserId');
+        const bookTitleInput = document.getElementById('bookTitleInput');
+        const bookAuthorInput = document.getElementById('bookAuthorInput');
+        const ownerNameInput = document.getElementById('ownerNameInput');
+        const addBookBtn = document.getElementById('addBookBtn');
+        const myBooksList = document.getElementById('myBooksList');
+        const noMyBooksMessage = document.getElementById('noMyBooksMessage');
+        const availableBooksList = document.getElementById('availableBooksList');
+        const noAvailableBooksMessage = document.getElementById('noAvailableBooksMessage');
+        const myIssuedBooksList = document.getElementById('myIssuedBooksList');
+        const noIssuedBooksMessage = document.getElementById('noIssuedBooksMessage');
+        const requestNotification = document.getElementById('requestNotification');
+        const pendingRequestsCount = document.getElementById('pendingRequestsCount');
+        const viewRequestsBtn = document.getElementById('viewRequestsBtn');
+        const requestsModal = document.getElementById('requestsModal');
+        const closeRequestsModalBtn = document.getElementById('closeRequestsModalBtn');
+        const pendingRequestsList = document.getElementById('pendingRequestsList');
+        const noPendingRequestsMessage = document.getElementById('noPendingRequestsMessage');
+
+        // Confirmation Modal Elements
+        const confirmationModal = document.getElementById('confirmationModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+        const modalCancelBtn = document.getElementById('modalCancelBtn');
+        const closeModalButtons = document.querySelectorAll('.close-button'); // For both modals
+
+        let currentModalAction = null; // Stores the function to execute on modal confirmation
+
+        // --- Firebase Initialization and Authentication ---
+        function initFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        currentUserIdDisplay.textContent = `Your User ID: ${userId}`;
+                        console.log('Signed in as:', userId);
+                        setupFirestoreListeners(); // Start listening to data once authenticated
+                    } else {
+                        // Sign in anonymously if no user is authenticated
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token !== "") {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                        console.log('Attempting anonymous sign-in...');
+                    }
+                });
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                currentUserIdDisplay.textContent = `Error initializing Firebase. Check console.`;
+            }
+        }
+
+        // --- Confirmation Modal Functions ---
+        function showConfirmationModal(message, onConfirm) {
+            modalMessage.textContent = message;
+            confirmationModal.style.display = 'flex';
+            currentModalAction = onConfirm;
+        }
+
+        function hideConfirmationModal() {
+            confirmationModal.style.display = 'none';
+            currentModalAction = null;
+        }
+
+        modalConfirmBtn.addEventListener('click', () => {
+            if (currentModalAction) {
+                currentModalAction();
+            }
+            hideConfirmationModal();
+        });
+
+        modalCancelBtn.addEventListener('click', () => {
+            hideConfirmationModal();
+        });
+
+        closeModalButtons.forEach(button => {
+            button.addEventListener('click', hideConfirmationModal); // General close button for confirmation modal
+        });
+        document.getElementById('closeRequestsModalBtn').addEventListener('click', () => {
+            requestsModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target == confirmationModal) {
+                hideConfirmationModal();
+            }
+            if (event.target == requestsModal) {
+                requestsModal.style.display = 'none';
+            }
+        });
+
+
+        // --- Firestore Operations ---
+
+        const getBooksCollectionRef = () => collection(db, `artifacts/${appId}/public/data/books`);
+        const getRequestsCollectionRef = () => collection(db, `artifacts/${appId}/public/data/requests`);
+
+        /**
+         * Adds a new book to Firestore.
+         */
+        addBookBtn.addEventListener('click', async () => {
+            if (!userId) {
+                showConfirmationModal("Please wait for authentication to complete.", () => {});
+                return;
+            }
+
+            const title = bookTitleInput.value.trim();
+            const author = bookAuthorInput.value.trim();
+            userName = ownerNameInput.value.trim(); // Update userName from input
+
+            if (!title || !author || !userName) {
+                showConfirmationModal("Please fill in all book details (Title, Author, Your Name).", () => {});
+                return;
+            }
+
+            try {
+                await addDoc(getBooksCollectionRef(), {
+                    ownerId: userId,
+                    ownerName: userName,
+                    bookTitle: title,
+                    bookAuthor: author,
+                    status: 'available', // Default status
+                    issuedToPersonId: null,
+                    issuedToPersonName: null,
+                    requestedByPersonId: null,
+                    requestedByPersonName: null,
+                    timestamp: new Date()
+                });
+                bookTitleInput.value = '';
+                bookAuthorInput.value = '';
+                // Keep ownerNameInput value as it might be used repeatedly
+                showConfirmationModal("Book added successfully!", () => {});
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                showConfirmationModal(`Error adding book: ${e.message}`, () => {});
+            }
+        });
+
+        /**
+         * Sends a request for a book.
+         * @param {Object} book - The book object to request.
+         */
+        async function requestBook(book) {
+            if (!userId) {
+                showConfirmationModal("Please wait for authentication to complete.", () => {});
+                return;
+            }
+            if (book.status !== 'available') {
+                showConfirmationModal("This book is not available for request.", () => {});
+                return;
+            }
+            if (book.ownerId === userId) {
+                 showConfirmationModal("You cannot request your own book.", () => {});
+                return;
+            }
+
+            showConfirmationModal(`Are you sure you want to request "${book.bookTitle}" from ${book.ownerName}?`, async () => {
+                try {
+                    // Update book status to 'requested'
+                    await updateDoc(doc(db, `artifacts/${appId}/public/data/books`, book.id), {
+                        status: 'requested',
+                        requestedByPersonId: userId,
+                        requestedByPersonName: currentUserIdDisplay.textContent.replace('Your User ID: ', userName || userId) // Use userName if set, else userId
+                    });
+
+                    // Create a request document
+                    await addDoc(getRequestsCollectionRef(), {
+                        bookId: book.id,
+                        bookTitle: book.bookTitle,
+                        ownerId: book.ownerId,
+                        ownerName: book.ownerName,
+                        requesterId: userId,
+                        requesterName: currentUserIdDisplay.textContent.replace('Your User ID: ', userName || userId), // Use userName if set, else userId
+                        timestamp: new Date()
+                    });
+                    showConfirmationModal(`Request for "${book.bookTitle}" sent successfully!`, () => {});
+                } catch (e) {
+                    console.error("Error requesting book: ", e);
+                    showConfirmationModal(`Error requesting book: ${e.message}`, () => {});
+                }
+            });
+        }
+
+        /**
+         * Approves a book request.
+         * @param {Object} request - The request object.
+         */
+        async function approveRequest(request) {
+            if (!userId || request.ownerId !== userId) return; // Only owner can approve
+
+            showConfirmationModal(`Approve request for "${request.bookTitle}" by ${request.requesterName}?`, async () => {
+                try {
+                    // Update book status to 'issued' and assign to requester
+                    await updateDoc(doc(db, `artifacts/${appId}/public/data/books`, request.bookId), {
+                        status: 'issued',
+                        issuedToPersonId: request.requesterId,
+                        issuedToPersonName: request.requesterName,
+                        requestedByPersonId: null, // Clear request fields
+                        requestedByPersonName: null
+                    });
+                    // Delete the request
+                    await deleteDoc(doc(db, `artifacts/${appId}/public/data/requests`, request.id));
+                    showConfirmationModal(`Request for "${request.bookTitle}" approved!`, () => {});
+                } catch (e) {
+                    console.error("Error approving request: ", e);
+                    showConfirmationModal(`Error approving request: ${e.message}`, () => {});
+                }
+            });
+        }
+
+        /**
+         * Rejects a book request.
+         * @param {Object} request - The request object.
+         */
+        async function rejectRequest(request) {
+            if (!userId || request.ownerId !== userId) return; // Only owner can reject
+
+            showConfirmationModal(`Reject request for "${request.bookTitle}" by ${request.requesterName}?`, async () => {
+                try {
+                    // Update book status back to 'available'
+                    await updateDoc(doc(db, `artifacts/${appId}/public/data/books`, request.bookId), {
+                        status: 'available',
+                        requestedByPersonId: null, // Clear request fields
+                        requestedByPersonName: null
+                    });
+                    // Delete the request
+                    await deleteDoc(doc(db, `artifacts/${appId}/public/data/requests`, request.id));
+                    showConfirmationModal(`Request for "${request.bookTitle}" rejected.`, () => {});
+                } catch (e) {
+                    console.error("Error rejecting request: ", e);
+                    showConfirmationModal(`Error rejecting request: ${e.message}`, () => {});
+                }
+            });
+        }
+
+        /**
+         * Marks an issued book as returned.
+         * @param {Object} book - The book object to return.
+         */
+        async function returnBook(book) {
+            // Only the owner or the person it's issued to can mark as returned
+            if (!userId || (book.ownerId !== userId && book.issuedToPersonId !== userId)) {
+                showConfirmationModal("You are not authorized to return this book.", () => {});
+                return;
+            }
+
+            showConfirmationModal(`Confirm returning "${book.bookTitle}"?`, async () => {
+                try {
+                    await updateDoc(doc(db, `artifacts/${appId}/public/data/books`, book.id), {
+                        status: 'available',
+                        issuedToPersonId: null,
+                        issuedToPersonName: null
+                    });
+                    showConfirmationModal(`"${book.bookTitle}" marked as returned and available.`, () => {});
+                } catch (e) {
+                    console.error("Error returning book: ", e);
+                    showConfirmationModal(`Error returning book: ${e.message}`, () => {});
+                }
+            });
+        }
+
+        // --- Real-time Listeners and UI Rendering ---
+        function setupFirestoreListeners() {
+            // Listener for all books
+            onSnapshot(getBooksCollectionRef(), (snapshot) => {
+                const myBooks = [];
+                const availableBooks = [];
+                const myIssuedBooks = [];
+
+                snapshot.docs.forEach(doc => {
+                    const book = { id: doc.id, ...doc.data() };
+                    if (book.ownerId === userId) {
+                        myBooks.push(book);
+                    } else if (book.status === 'available') {
+                        availableBooks.push(book);
+                    } else if (book.status === 'issued' && book.issuedToPersonId === userId) {
+                        myIssuedBooks.push(book);
+                    }
+                });
+                renderBookLists(myBooks, availableBooks, myIssuedBooks);
+            }, (error) => {
+                console.error("Error listening to books:", error);
+                showConfirmationModal(`Error loading books: ${error.message}`, () => {});
+            });
+
+            // Listener for incoming requests (only for the current user as owner)
+            onSnapshot(query(getRequestsCollectionRef(), where("ownerId", "==", userId)), (snapshot) => {
+                const pendingRequests = [];
+                snapshot.docs.forEach(doc => {
+                    pendingRequests.push({ id: doc.id, ...doc.data() });
+                });
+                updateRequestNotification(pendingRequests);
+                renderPendingRequestsModal(pendingRequests);
+            }, (error) => {
+                console.error("Error listening to requests:", error);
+            });
+        }
+
+        /**
+         * Renders the different lists of books (My Books, Available, Issued To Me).
+         * @param {Array} myBooks
+         * @param {Array} availableBooks
+         * @param {Array} myIssuedBooks
+         */
+        function renderBookLists(myBooks, availableBooks, myIssuedBooks) {
+            // Render My Books
+            myBooksList.innerHTML = '';
+            if (myBooks.length === 0) {
+                noMyBooksMessage.classList.remove('hidden');
+            } else {
+                noMyBooksMessage.classList.add('hidden');
+                myBooks.forEach(book => {
+                    myBooksList.appendChild(createBookCard(book, 'myBook'));
+                });
+            }
+
+            // Render Available Books for others to request
+            availableBooksList.innerHTML = '';
+            if (availableBooks.length === 0) {
+                noAvailableBooksMessage.classList.remove('hidden');
+            } else {
+                noAvailableBooksMessage.classList.add('hidden');
+                availableBooks.forEach(book => {
+                    availableBooksList.appendChild(createBookCard(book, 'availableForRequest'));
+                });
+            }
+
+            // Render Books Issued To Me
+            myIssuedBooksList.innerHTML = '';
+            if (myIssuedBooks.length === 0) {
+                noIssuedBooksMessage.classList.remove('hidden');
+            } else {
+                noIssuedBooksMessage.classList.add('hidden');
+                myIssuedBooks.forEach(book => {
+                    myIssuedBooksList.appendChild(createBookCard(book, 'issuedToMe'));
+                });
+            }
+        }
+
+        /**
+         * Creates an HTML card for a book.
+         * @param {Object} book - The book object.
+         * @param {string} type - 'myBook', 'availableForRequest', 'issuedToMe'
+         * @returns {HTMLElement} The book card element.
+         */
+        function createBookCard(book, type) {
+            const card = document.createElement('div');
+            let statusColor = '';
+            let statusText = '';
+            let actionsHtml = '';
+
+            switch (book.status) {
+                case 'available':
+                    statusColor = 'bg-green-100 text-green-800';
+                    statusText = 'Available';
+                    if (type === 'availableForRequest') { // Only show request if not my own book
+                        actionsHtml = `<button class="request-btn mt-2 px-3 py-1 bg-blue-500 text-white text-sm font-semibold rounded-md hover:bg-blue-600 transition duration-150 ease-in-out" data-book-id="${book.id}">Request Book</button>`;
+                    } else if (type === 'myBook') {
+                         actionsHtml = `<button class="delete-btn mt-2 px-3 py-1 bg-red-500 text-white text-sm font-semibold rounded-md hover:bg-red-600 transition duration-150 ease-in-out" data-book-id="${book.id}">Delete Book</button>`;
+                    }
+                    break;
+                case 'requested':
+                    statusColor = 'bg-yellow-100 text-yellow-800';
+                    statusText = `Requested by ${book.requestedByPersonName}`;
+                    break;
+                case 'issued':
+                    statusColor = 'bg-red-100 text-red-800';
+                    statusText = `Issued to ${book.issuedToPersonName}`;
+                     if (type === 'myBook') { // Owner can mark as returned
+                        actionsHtml = `<button class="return-btn mt-2 px-3 py-1 bg-purple-500 text-white text-sm font-semibold rounded-md hover:bg-purple-600 transition duration-150 ease-in-out" data-book-id="${book.id}">Mark as Returned</button>`;
+                    } else if (type === 'issuedToMe') { // Person issued to can also mark as returned (optional, but good UX)
+                        actionsHtml = `<button class="return-btn mt-2 px-3 py-1 bg-purple-500 text-white text-sm font-semibold rounded-md hover:bg-purple-600 transition duration-150 ease-in-out" data-book-id="${book.id}">Return Book</button>`;
+                    }
+                    break;
+                default:
+                    statusColor = 'bg-gray-100 text-gray-800';
+                    statusText = 'Unknown Status';
+            }
+
+            card.className = `bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-4`;
+            card.innerHTML = `
+                <div class="text-left flex-grow">
+                    <p class="text-xl font-bold text-gray-900">${book.bookTitle}</p>
+                    <p class="text-md text-gray-700">by ${book.bookAuthor}</p>
+                    <p class="text-sm text-gray-500">Owner: ${book.ownerName}</p>
+                    <span class="inline-block mt-2 px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${statusText}</span>
+                </div>
+                <div class="flex-shrink-0 flex flex-col items-end">
+                    ${actionsHtml}
+                </div>
+            `;
+
+            // Attach event listeners for dynamic buttons
+            if (actionsHtml.includes('request-btn')) {
+                card.querySelector('.request-btn').addEventListener('click', () => requestBook(book));
+            }
+            if (actionsHtml.includes('return-btn')) {
+                card.querySelector('.return-btn').addEventListener('click', () => returnBook(book));
+            }
+            if (actionsHtml.includes('delete-btn')) {
+                card.querySelector('.delete-btn').addEventListener('click', () => deleteBook(book.id));
+            }
+            return card;
+        }
+
+        /**
+         * Deletes a book from Firestore.
+         * @param {string} bookId - The ID of the book to delete.
+         */
+        async function deleteBook(bookId) {
+            showConfirmationModal("Are you sure you want to delete this book? This action cannot be undone.", async () => {
+                try {
+                    await deleteDoc(doc(db, `artifacts/${appId}/public/data/books`, bookId));
+                    showConfirmationModal("Book deleted successfully!", () => {});
+                } catch (e) {
+                    console.error("Error deleting book: ", e);
+                    showConfirmationModal(`Error deleting book: ${e.message}`, () => {});
+                }
+            });
+        }
+
+
+        /**
+         * Updates the request notification badge.
+         * @param {Array} pendingRequests - Array of pending request objects.
+         */
+        function updateRequestNotification(pendingRequests) {
+            if (pendingRequests.length > 0) {
+                pendingRequestsCount.textContent = pendingRequests.length;
+                requestNotification.classList.remove('hidden');
+            } else {
+                requestNotification.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Renders pending requests in the modal.
+         * @param {Array} pendingRequests - Array of pending request objects.
+         */
+        function renderPendingRequestsModal(pendingRequests) {
+            pendingRequestsList.innerHTML = ''; // Clear existing list
+            if (pendingRequests.length === 0) {
+                noPendingRequestsMessage.classList.remove('hidden');
+            } else {
+                noPendingRequestsMessage.classList.add('hidden');
+                pendingRequests.forEach(request => {
+                    const requestCard = document.createElement('div');
+                    requestCard.className = 'bg-white p-4 rounded-lg shadow-sm border border-yellow-300 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-4';
+                    requestCard.innerHTML = `
+                        <div class="text-left flex-grow">
+                            <p class="text-lg font-medium text-gray-900">Request for: "${request.bookTitle}"</p>
+                            <p class="text-sm text-gray-600">From: ${request.requesterName}</p>
+                        </div>
+                        <div class="flex-shrink-0 flex flex-col sm:flex-row gap-2">
+                            <button class="approve-btn px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-md hover:bg-green-600 transition duration-150 ease-in-out" data-request-id="${request.id}">Approve</button>
+                            <button class="reject-btn px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-md hover:bg-red-600 transition duration-150 ease-in-out" data-request-id="${request.id}">Reject</button>
+                        </div>
+                    `;
+                    requestCard.querySelector('.approve-btn').addEventListener('click', () => approveRequest(request));
+                    requestCard.querySelector('.reject-btn').addEventListener('click', () => rejectRequest(request));
+                    pendingRequestsList.appendChild(requestCard);
+                });
+            }
+        }
+
+        viewRequestsBtn.addEventListener('click', () => {
+            requestsModal.style.display = 'flex';
+        });
+
+        // Initialize Firebase on window load
+        window.onload = initFirebase;
+    </script>
+</body>
+</html>
