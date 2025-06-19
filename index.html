@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swayam Library</title>
+    <title>Swayam Library (Supabase)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -141,17 +141,21 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-        // Firebase Configuration and Initialization
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        // --- Supabase Configuration ---
+        // !!! IMPORTANT: YOU MUST REPLACE THESE WITH YOUR ACTUAL SUPABASE PROJECT URL AND ANON KEY !!!
+        // You can find these in your Supabase Dashboard under Project Settings -> API.
+        const SUPABASE_URL = 'https://tmtjqlhinhjpumzgsspa.supabase.co'; // e.g., 'https://abcde12345.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtdGpxbGhpbmhqcHVtemdzc3BhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyOTg0NDUsImV4cCI6MjA2NTg3NDQ0NX0.h75Cd0FbniB7gTE_xj7aHoiJjlkOVIwmgGfaMH4DNRc'; // e.g., 'eyJhbGciOiJIUzI1Ni...'
 
-        let app;
-        let db;
-        let auth;
+        // Log the values to console to aid debugging if URL is still invalid
+        console.log("Supabase URL being used:", SUPABASE_URL);
+        console.log("Supabase Anon Key being used (first few chars):", SUPABASE_ANON_KEY ? SUPABASE_ANON_KEY.substring(0, 10) + '...' : 'Not provided');
+
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         let userId = null;
         let userName = ''; // To store the user's name if they add books
 
@@ -180,36 +184,36 @@
         const modalMessage = document.getElementById('modalMessage');
         const modalConfirmBtn = document.getElementById('modalConfirmBtn');
         const modalCancelBtn = document.getElementById('modalCancelBtn');
-        const closeModalButtons = document.querySelectorAll('.close-button'); // For both modals
+        const closeModalButtons = document.querySelectorAll('.close-button'); // For all modals
 
         let currentModalAction = null; // Stores the function to execute on modal confirmation
 
-        // --- Firebase Initialization and Authentication ---
-        function initFirebase() {
+        // --- Supabase Authentication ---
+        async function initSupabaseAuth() {
             try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        currentUserIdDisplay.textContent = `Your User ID: ${userId}`;
-                        console.log('Signed in as:', userId);
-                        setupFirestoreListeners(); // Start listening to data once authenticated
-                    } else {
-                        // Sign in anonymously if no user is authenticated
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token !== "") {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                        console.log('Attempting anonymous sign-in...');
+                // Try to get current session
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    userId = session.user.id;
+                    currentUserIdDisplay.textContent = `Your User ID: ${userId}`;
+                    console.log('Signed in as:', userId);
+                } else {
+                    // Sign in anonymously if no session exists
+                    const { data, error } = await supabase.auth.signInAnonymously();
+                    if (error) {
+                        console.error('Error signing in anonymously:', error.message);
+                        currentUserIdDisplay.textContent = `Error signing in. Check console.`;
+                        showConfirmationModal(`Error signing in: ${error.message}`, () => {});
+                        return;
                     }
-                });
+                    userId = data.user.id;
+                    currentUserIdDisplay.textContent = `Your User ID: ${userId}`;
+                    console.log('Signed in anonymously as:', userId);
+                }
+                setupSupabaseListeners(); // Start listening to data once authenticated
             } catch (error) {
-                console.error("Error initializing Firebase:", error);
-                currentUserIdDisplay.textContent = `Error initializing Firebase. Check console.`;
+                console.error("Error initializing Supabase Auth:", error);
+                currentUserIdDisplay.textContent = `Error initializing Auth. Check console.`;
             }
         }
 
@@ -236,11 +240,12 @@
             hideConfirmationModal();
         });
 
+        // Close buttons for both modals
         closeModalButtons.forEach(button => {
-            button.addEventListener('click', hideConfirmationModal); // General close button for confirmation modal
-        });
-        document.getElementById('closeRequestsModalBtn').addEventListener('click', () => {
-            requestsModal.style.display = 'none';
+            button.addEventListener('click', () => {
+                confirmationModal.style.display = 'none';
+                requestsModal.style.display = 'none';
+            });
         });
 
         window.addEventListener('click', (event) => {
@@ -253,13 +258,10 @@
         });
 
 
-        // --- Firestore Operations ---
-
-        const getBooksCollectionRef = () => collection(db, `artifacts/${appId}/public/data/books`);
-        const getRequestsCollectionRef = () => collection(db, `artifacts/${appId}/public/data/requests`);
+        // --- Supabase Database Operations ---
 
         /**
-         * Adds a new book to Firestore.
+         * Adds a new book to Supabase.
          */
         addBookBtn.addEventListener('click', async () => {
             if (!userId) {
@@ -277,24 +279,26 @@
             }
 
             try {
-                await addDoc(getBooksCollectionRef(), {
-                    ownerId: userId,
-                    ownerName: userName,
-                    bookTitle: title,
-                    bookAuthor: author,
-                    status: 'available', // Default status
-                    issuedToPersonId: null,
-                    issuedToPersonName: null,
-                    requestedByPersonId: null,
-                    requestedByPersonName: null,
-                    timestamp: new Date()
-                });
+                const { data, error } = await supabase
+                    .from('books')
+                    .insert([
+                        {
+                            owner_id: userId,
+                            owner_name: userName,
+                            book_title: title,
+                            book_author: author,
+                            status: 'available'
+                        }
+                    ]);
+
+                if (error) throw error;
+
                 bookTitleInput.value = '';
                 bookAuthorInput.value = '';
                 // Keep ownerNameInput value as it might be used repeatedly
                 showConfirmationModal("Book added successfully!", () => {});
             } catch (e) {
-                console.error("Error adding document: ", e);
+                console.error("Error adding book: ", e);
                 showConfirmationModal(`Error adding book: ${e.message}`, () => {});
             }
         });
@@ -312,31 +316,42 @@
                 showConfirmationModal("This book is not available for request.", () => {});
                 return;
             }
-            if (book.ownerId === userId) {
+            if (book.owner_id === userId) {
                  showConfirmationModal("You cannot request your own book.", () => {});
                 return;
             }
 
-            showConfirmationModal(`Are you sure you want to request "${book.bookTitle}" from ${book.ownerName}?`, async () => {
+            showConfirmationModal(`Are you sure you want to request "${book.book_title}" from ${book.owner_name}?`, async () => {
                 try {
                     // Update book status to 'requested'
-                    await updateDoc(doc(db, `artifacts/${appId}/public/data/books`, book.id), {
-                        status: 'requested',
-                        requestedByPersonId: userId,
-                        requestedByPersonName: currentUserIdDisplay.textContent.replace('Your User ID: ', userName || userId) // Use userName if set, else userId
-                    });
+                    const { error: bookUpdateError } = await supabase
+                        .from('books')
+                        .update({
+                            status: 'requested',
+                            requested_by_person_id: userId,
+                            requested_by_person_name: ownerNameInput.value.trim() || 'Anonymous Requester' // Use ownerNameInput for requester name if set
+                        })
+                        .eq('id', book.id);
+
+                    if (bookUpdateError) throw bookUpdateError;
 
                     // Create a request document
-                    await addDoc(getRequestsCollectionRef(), {
-                        bookId: book.id,
-                        bookTitle: book.bookTitle,
-                        ownerId: book.ownerId,
-                        ownerName: book.ownerName,
-                        requesterId: userId,
-                        requesterName: currentUserIdDisplay.textContent.replace('Your User ID: ', userName || userId), // Use userName if set, else userId
-                        timestamp: new Date()
-                    });
-                    showConfirmationModal(`Request for "${book.bookTitle}" sent successfully!`, () => {});
+                    const { data: requestData, error: requestError } = await supabase
+                        .from('requests')
+                        .insert([
+                            {
+                                book_id: book.id,
+                                book_title: book.book_title,
+                                owner_id: book.owner_id,
+                                owner_name: book.owner_name,
+                                requester_id: userId,
+                                requester_name: ownerNameInput.value.trim() || 'Anonymous Requester' // Use ownerNameInput for requester name if set
+                            }
+                        ]);
+
+                    if (requestError) throw requestError;
+
+                    showConfirmationModal(`Request for "${book.book_title}" sent successfully!`, () => {});
                 } catch (e) {
                     console.error("Error requesting book: ", e);
                     showConfirmationModal(`Error requesting book: ${e.message}`, () => {});
@@ -349,21 +364,33 @@
          * @param {Object} request - The request object.
          */
         async function approveRequest(request) {
-            if (!userId || request.ownerId !== userId) return; // Only owner can approve
+            if (!userId || request.owner_id !== userId) return; // Only owner can approve
 
-            showConfirmationModal(`Approve request for "${request.bookTitle}" by ${request.requesterName}?`, async () => {
+            showConfirmationModal(`Approve request for "${request.book_title}" by ${request.requester_name}?`, async () => {
                 try {
                     // Update book status to 'issued' and assign to requester
-                    await updateDoc(doc(db, `artifacts/${appId}/public/data/books`, request.bookId), {
-                        status: 'issued',
-                        issuedToPersonId: request.requesterId,
-                        issuedToPersonName: request.requesterName,
-                        requestedByPersonId: null, // Clear request fields
-                        requestedByPersonName: null
-                    });
+                    const { error: bookUpdateError } = await supabase
+                        .from('books')
+                        .update({
+                            status: 'issued',
+                            issued_to_person_id: request.requester_id,
+                            issued_to_person_name: request.requester_name,
+                            requested_by_person_id: null, // Clear request fields
+                            requested_by_person_name: null
+                        })
+                        .eq('id', request.book_id);
+
+                    if (bookUpdateError) throw bookUpdateError;
+
                     // Delete the request
-                    await deleteDoc(doc(db, `artifacts/${appId}/public/data/requests`, request.id));
-                    showConfirmationModal(`Request for "${request.bookTitle}" approved!`, () => {});
+                    const { error: requestDeleteError } = await supabase
+                        .from('requests')
+                        .delete()
+                        .eq('id', request.id);
+
+                    if (requestDeleteError) throw requestDeleteError;
+
+                    showConfirmationModal(`Request for "${request.book_title}" approved!`, () => {});
                 } catch (e) {
                     console.error("Error approving request: ", e);
                     showConfirmationModal(`Error approving request: ${e.message}`, () => {});
@@ -376,19 +403,31 @@
          * @param {Object} request - The request object.
          */
         async function rejectRequest(request) {
-            if (!userId || request.ownerId !== userId) return; // Only owner can reject
+            if (!userId || request.owner_id !== userId) return; // Only owner can reject
 
-            showConfirmationModal(`Reject request for "${request.bookTitle}" by ${request.requesterName}?`, async () => {
+            showConfirmationModal(`Reject request for "${request.book_title}" by ${request.requester_name}?`, async () => {
                 try {
                     // Update book status back to 'available'
-                    await updateDoc(doc(db, `artifacts/${appId}/public/data/books`, request.bookId), {
-                        status: 'available',
-                        requestedByPersonId: null, // Clear request fields
-                        requestedByPersonName: null
-                    });
+                    const { error: bookUpdateError } = await supabase
+                        .from('books')
+                        .update({
+                            status: 'available',
+                            requested_by_person_id: null, // Clear request fields
+                            requested_by_person_name: null
+                        })
+                        .eq('id', request.book_id);
+
+                    if (bookUpdateError) throw bookUpdateError;
+
                     // Delete the request
-                    await deleteDoc(doc(db, `artifacts/${appId}/public/data/requests`, request.id));
-                    showConfirmationModal(`Request for "${request.bookTitle}" rejected.`, () => {});
+                    const { error: requestDeleteError } = await supabase
+                        .from('requests')
+                        .delete()
+                        .eq('id', request.id);
+
+                    if (requestDeleteError) throw requestDeleteError;
+
+                    showConfirmationModal(`Request for "${request.book_title}" rejected.`, () => {});
                 } catch (e) {
                     console.error("Error rejecting request: ", e);
                     showConfirmationModal(`Error rejecting request: ${e.message}`, () => {});
@@ -402,19 +441,24 @@
          */
         async function returnBook(book) {
             // Only the owner or the person it's issued to can mark as returned
-            if (!userId || (book.ownerId !== userId && book.issuedToPersonId !== userId)) {
+            if (!userId || (book.owner_id !== userId && book.issued_to_person_id !== userId)) {
                 showConfirmationModal("You are not authorized to return this book.", () => {});
                 return;
             }
 
-            showConfirmationModal(`Confirm returning "${book.bookTitle}"?`, async () => {
+            showConfirmationModal(`Confirm returning "${book.book_title}"?`, async () => {
                 try {
-                    await updateDoc(doc(db, `artifacts/${appId}/public/data/books`, book.id), {
-                        status: 'available',
-                        issuedToPersonId: null,
-                        issuedToPersonName: null
-                    });
-                    showConfirmationModal(`"${book.bookTitle}" marked as returned and available.`, () => {});
+                    const { error } = await supabase
+                        .from('books')
+                        .update({
+                            status: 'available',
+                            issued_to_person_id: null,
+                            issued_to_person_name: null
+                        })
+                        .eq('id', book.id);
+
+                    if (error) throw error;
+                    showConfirmationModal(`"${book.book_title}" marked as returned and available.`, () => {});
                 } catch (e) {
                     console.error("Error returning book: ", e);
                     showConfirmationModal(`Error returning book: ${e.message}`, () => {});
@@ -422,42 +466,104 @@
             });
         }
 
-        // --- Real-time Listeners and UI Rendering ---
-        function setupFirestoreListeners() {
-            // Listener for all books
-            onSnapshot(getBooksCollectionRef(), (snapshot) => {
-                const myBooks = [];
-                const availableBooks = [];
-                const myIssuedBooks = [];
+        /**
+         * Deletes a book from Supabase.
+         * @param {string} bookId - The ID of the book to delete.
+         */
+        async function deleteBook(bookId) {
+            showConfirmationModal("Are you sure you want to delete this book? This action cannot be undone.", async () => {
+                try {
+                    const { error } = await supabase
+                        .from('books')
+                        .delete()
+                        .eq('id', bookId);
 
-                snapshot.docs.forEach(doc => {
-                    const book = { id: doc.id, ...doc.data() };
-                    if (book.ownerId === userId) {
-                        myBooks.push(book);
-                    } else if (book.status === 'available') {
-                        availableBooks.push(book);
-                    } else if (book.status === 'issued' && book.issuedToPersonId === userId) {
-                        myIssuedBooks.push(book);
-                    }
-                });
-                renderBookLists(myBooks, availableBooks, myIssuedBooks);
-            }, (error) => {
-                console.error("Error listening to books:", error);
-                showConfirmationModal(`Error loading books: ${error.message}`, () => {});
-            });
-
-            // Listener for incoming requests (only for the current user as owner)
-            onSnapshot(query(getRequestsCollectionRef(), where("ownerId", "==", userId)), (snapshot) => {
-                const pendingRequests = [];
-                snapshot.docs.forEach(doc => {
-                    pendingRequests.push({ id: doc.id, ...doc.data() });
-                });
-                updateRequestNotification(pendingRequests);
-                renderPendingRequestsModal(pendingRequests);
-            }, (error) => {
-                console.error("Error listening to requests:", error);
+                    if (error) throw error;
+                    showConfirmationModal("Book deleted successfully!", () => {});
+                } catch (e) {
+                    console.error("Error deleting book: ", e);
+                    showConfirmationModal(`Error deleting book: ${e.message}`, () => {});
+                }
             });
         }
+
+
+        // --- Real-time Listeners and UI Rendering ---
+        function setupSupabaseListeners() {
+            // Listener for all books (real-time changes)
+            supabase
+                .from('books')
+                .on('*', payload => { // Listen to all changes (INSERT, UPDATE, DELETE)
+                    console.log('Book change received!', payload);
+                    fetchAndRenderBooks(); // Re-fetch and re-render all lists
+                })
+                .subscribe();
+
+            // Listener for incoming requests (only for the current user as owner)
+            supabase
+                .from('requests')
+                .on('*', payload => { // Listen to all changes (INSERT, UPDATE, DELETE)
+                    console.log('Request change received!', payload);
+                    fetchAndRenderRequests(); // Re-fetch and re-render requests
+                })
+                .subscribe();
+
+            // Initial fetch and render
+            fetchAndRenderBooks();
+            fetchAndRenderRequests();
+        }
+
+        /**
+         * Fetches and renders all book lists from Supabase.
+         */
+        async function fetchAndRenderBooks() {
+            if (!userId) return; // Ensure user ID is available
+
+            const { data: books, error } = await supabase
+                .from('books')
+                .select('*');
+
+            if (error) {
+                console.error("Error fetching books:", error.message);
+                showConfirmationModal(`Error loading books: ${error.message}`, () => {});
+                return;
+            }
+
+            const myBooks = [];
+            const availableBooks = [];
+            const myIssuedBooks = [];
+
+            books.forEach(book => {
+                if (book.owner_id === userId) {
+                    myBooks.push(book);
+                } else if (book.status === 'available') {
+                    availableBooks.push(book);
+                } else if (book.status === 'issued' && book.issued_to_person_id === userId) {
+                    myIssuedBooks.push(book);
+                }
+            });
+            renderBookLists(myBooks, availableBooks, myIssuedBooks);
+        }
+
+        /**
+         * Fetches and renders pending requests for the current user.
+         */
+        async function fetchAndRenderRequests() {
+            if (!userId) return; // Ensure user ID is available
+
+            const { data: requests, error } = await supabase
+                .from('requests')
+                .select('*')
+                .eq('owner_id', userId); // Only fetch requests where current user is the owner
+
+            if (error) {
+                console.error("Error fetching requests:", error.message);
+                return;
+            }
+            updateRequestNotification(requests);
+            renderPendingRequestsModal(requests);
+        }
+
 
         /**
          * Renders the different lists of books (My Books, Available, Issued To Me).
@@ -524,11 +630,11 @@
                     break;
                 case 'requested':
                     statusColor = 'bg-yellow-100 text-yellow-800';
-                    statusText = `Requested by ${book.requestedByPersonName}`;
+                    statusText = `Requested by ${book.requested_by_person_name}`;
                     break;
                 case 'issued':
                     statusColor = 'bg-red-100 text-red-800';
-                    statusText = `Issued to ${book.issuedToPersonName}`;
+                    statusText = `Issued to ${book.issued_to_person_name}`;
                      if (type === 'myBook') { // Owner can mark as returned
                         actionsHtml = `<button class="return-btn mt-2 px-3 py-1 bg-purple-500 text-white text-sm font-semibold rounded-md hover:bg-purple-600 transition duration-150 ease-in-out" data-book-id="${book.id}">Mark as Returned</button>`;
                     } else if (type === 'issuedToMe') { // Person issued to can also mark as returned (optional, but good UX)
@@ -543,9 +649,9 @@
             card.className = `bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-4`;
             card.innerHTML = `
                 <div class="text-left flex-grow">
-                    <p class="text-xl font-bold text-gray-900">${book.bookTitle}</p>
-                    <p class="text-md text-gray-700">by ${book.bookAuthor}</p>
-                    <p class="text-sm text-gray-500">Owner: ${book.ownerName}</p>
+                    <p class="text-xl font-bold text-gray-900">${book.book_title}</p>
+                    <p class="text-md text-gray-700">by ${book.book_author}</p>
+                    <p class="text-sm text-gray-500">Owner: ${book.owner_name}</p>
                     <span class="inline-block mt-2 px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${statusText}</span>
                 </div>
                 <div class="flex-shrink-0 flex flex-col items-end">
@@ -565,23 +671,6 @@
             }
             return card;
         }
-
-        /**
-         * Deletes a book from Firestore.
-         * @param {string} bookId - The ID of the book to delete.
-         */
-        async function deleteBook(bookId) {
-            showConfirmationModal("Are you sure you want to delete this book? This action cannot be undone.", async () => {
-                try {
-                    await deleteDoc(doc(db, `artifacts/${appId}/public/data/books`, bookId));
-                    showConfirmationModal("Book deleted successfully!", () => {});
-                } catch (e) {
-                    console.error("Error deleting book: ", e);
-                    showConfirmationModal(`Error deleting book: ${e.message}`, () => {});
-                }
-            });
-        }
-
 
         /**
          * Updates the request notification badge.
@@ -611,8 +700,8 @@
                     requestCard.className = 'bg-white p-4 rounded-lg shadow-sm border border-yellow-300 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-4';
                     requestCard.innerHTML = `
                         <div class="text-left flex-grow">
-                            <p class="text-lg font-medium text-gray-900">Request for: "${request.bookTitle}"</p>
-                            <p class="text-sm text-gray-600">From: ${request.requesterName}</p>
+                            <p class="text-lg font-medium text-gray-900">Request for: "${request.book_title}"</p>
+                            <p class="text-sm text-gray-600">From: ${request.requester_name}</p>
                         </div>
                         <div class="flex-shrink-0 flex flex-col sm:flex-row gap-2">
                             <button class="approve-btn px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-md hover:bg-green-600 transition duration-150 ease-in-out" data-request-id="${request.id}">Approve</button>
@@ -630,8 +719,8 @@
             requestsModal.style.display = 'flex';
         });
 
-        // Initialize Firebase on window load
-        window.onload = initFirebase;
+        // Initialize Supabase Authentication on window load
+        window.onload = initSupabaseAuth;
     </script>
 </body>
 </html>
