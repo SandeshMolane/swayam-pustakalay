@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swayam Library (Supabase)</title>
+    <title>Swayam Library (Email/Password Auth)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -59,60 +59,108 @@
 <body class="p-4 sm:p-8">
     <div class="max-w-6xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-lg">
         <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 text-center">Swayam Library</h1>
-        <p id="currentUserId" class="text-sm text-gray-600 text-center mb-6 break-words">Your User ID: Loading...</p>
-
-        <!-- Notification for requests -->
-        <div id="requestNotification" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md shadow-sm" role="alert">
-            <p class="font-bold">New Book Request!</p>
-            <p>You have <span id="pendingRequestsCount">0</span> pending book requests.</p>
-            <button id="viewRequestsBtn" class="mt-2 text-sm bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-md transition duration-150 ease-in-out">
-                View Requests
+        <div class="flex justify-between items-center mb-6">
+            <p id="currentUserId" class="text-sm text-gray-600 break-words">User ID: Not Logged In</p>
+            <p id="currentUserName" class="text-sm text-gray-700 font-medium ml-4">Hello, Guest!</p>
+            <button id="logoutBtn" class="hidden px-4 py-2 bg-gray-200 text-gray-800 text-sm font-semibold rounded-md hover:bg-gray-300 transition duration-150 ease-in-out">
+                Logout
             </button>
         </div>
 
-        <!-- Add Book Section -->
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200 shadow-sm">
-            <h2 class="text-2xl font-semibold text-blue-800 mb-4">Add a New Book</h2>
+        <!-- Authentication Section -->
+        <div id="authContainer" class="p-6 bg-gray-50 rounded-lg border border-gray-200 shadow-sm mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4 text-center">Login or Register</h2>
+            <div id="authError" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded-md" role="alert"></div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label for="bookTitleInput" class="block text-sm font-medium text-gray-700 mb-1">Book Title</label>
-                    <input type="text" id="bookTitleInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="The Great Gatsby">
+                <div id="registrationFields" class="md:col-span-2 hidden">
+                    <div>
+                        <label for="firstNameInput" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                        <input type="text" id="firstNameInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="John">
+                    </div>
+                    <div class="mt-2">
+                        <label for="lastNameInput" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                        <input type="text" id="lastNameInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Doe">
+                    </div>
                 </div>
                 <div>
-                    <label for="bookAuthorInput" class="block text-sm font-medium text-gray-700 mb-1">Author</label>
-                    <input type="text" id="bookAuthorInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="F. Scott Fitzgerald">
+                    <label for="emailInput" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="emailInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="you@example.com">
                 </div>
-                 <div>
-                    <label for="ownerNameInput" class="block text-sm font-medium text-gray-700 mb-1">Your Name (as Book Owner)</label>
-                    <input type="text" id="ownerNameInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Your Name">
+                <div>
+                    <label for="passwordInput" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="passwordInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="••••••••">
                 </div>
             </div>
-            <button id="addBookBtn" class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
-                Add Book to Library
-            </button>
-        </div>
-
-        <!-- My Books Section -->
-        <div class="mb-8 p-6 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
-            <h2 class="text-2xl font-semibold text-purple-800 mb-4">My Books</h2>
-            <div id="myBooksList" class="space-y-4">
-                <p id="noMyBooksMessage" class="text-gray-500 text-center">You haven't added any books yet.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <button id="registerBtn" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-md shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                    Register
+                </button>
+                <button id="loginBtn" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                    Login
+                </button>
             </div>
+            <p class="text-sm text-gray-500 mt-4 text-center">
+                <span id="toggleToLogin" class="text-blue-600 hover:underline cursor-pointer hidden">Already have an account? Login here.</span>
+                <span id="toggleToRegister" class="text-blue-600 hover:underline cursor-pointer">Don't have an account? Register here.</span>
+            </p>
         </div>
 
-        <!-- All Available Books Section -->
-        <div class="mb-8 p-6 bg-green-50 rounded-lg border border-green-200 shadow-sm">
-            <h2 class="text-2xl font-semibold text-green-800 mb-4">All Available Books (for Request)</h2>
-            <div id="availableBooksList" class="space-y-4">
-                <p id="noAvailableBooksMessage" class="text-gray-500 text-center">No books currently available for request from other users.</p>
+        <!-- Main Library Content -->
+        <div id="libraryContent" class="hidden">
+            <!-- Notification for requests -->
+            <div id="requestNotification" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md shadow-sm" role="alert">
+                <p class="font-bold">New Book Request!</p>
+                <p>You have <span id="pendingRequestsCount">0</span> pending book requests.</p>
+                <button id="viewRequestsBtn" class="mt-2 text-sm bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-md transition duration-150 ease-in-out">
+                    View Requests
+                </button>
             </div>
-        </div>
 
-        <!-- My Issued Books Section -->
-        <div class="mb-8 p-6 bg-indigo-50 rounded-lg border border-indigo-200 shadow-sm">
-            <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Books Issued To Me</h2>
-            <div id="myIssuedBooksList" class="space-y-4">
-                <p id="noIssuedBooksMessage" class="text-gray-500 text-center">You currently have no books issued to you.</p>
+            <!-- Add Book Section -->
+            <div class="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200 shadow-sm">
+                <h2 class="text-2xl font-semibold text-blue-800 mb-4">Add a New Book</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="bookTitleInput" class="block text-sm font-medium text-gray-700 mb-1">Book Title</label>
+                        <input type="text" id="bookTitleInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="The Great Gatsby">
+                    </div>
+                    <div>
+                        <label for="bookAuthorInput" class="block text-sm font-medium text-gray-700 mb-1">Author</label>
+                        <input type="text" id="bookAuthorInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="F. Scott Fitzgerald">
+                    </div>
+                     <div>
+                        <label for="ownerNameInput" class="block text-sm font-medium text-gray-700 mb-1">Your Name (as Book Owner)</label>
+                        <input type="text" id="ownerNameInput" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Your Name">
+                    </div>
+                </div>
+                <button id="addBookBtn" class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                    Add Book to Library
+                </button>
+            </div>
+
+            <!-- My Books Section -->
+            <div class="mb-8 p-6 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
+                <h2 class="text-2xl font-semibold text-purple-800 mb-4">My Books</h2>
+                <div id="myBooksList" class="space-y-4">
+                    <p id="noMyBooksMessage" class="text-gray-500 text-center">You haven't added any books yet.</p>
+                </div>
+            </div>
+
+            <!-- All Available Books Section -->
+            <div class="mb-8 p-6 bg-green-50 rounded-lg border border-green-200 shadow-sm">
+                <h2 class="text-2xl font-semibold text-green-800 mb-4">All Available Books (for Request)</h2>
+                <div id="availableBooksList" class="space-y-4">
+                    <p id="noAvailableBooksMessage" class="text-gray-500 text-center">No books currently available for request from other users.</p>
+                </div>
+            </div>
+
+            <!-- My Issued Books Section -->
+            <div class="mb-8 p-6 bg-indigo-50 rounded-lg border border-indigo-200 shadow-sm">
+                <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Books Issued To Me</h2>
+                <div id="myIssuedBooksList" class="space-y-4">
+                    <p id="noIssuedBooksMessage" class="text-gray-500 text-center">You currently have no books issued to you.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -149,21 +197,32 @@
         const SUPABASE_URL = 'https://tmtjqlhinhjpumzgsspa.supabase.co'; // e.g., 'https://abcde12345.supabase.co'
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtdGpxbGhpbmhqcHVtemdzc3BhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyOTg0NDUsImV4cCI6MjA2NTg3NDQ0NX0.h75Cd0FbniB7gTE_xj7aHoiJjlkOVIwmgGfaMH4DNRc'; // e.g., 'eyJhbGciOiJIUzI1Ni...'
 
-        // Log the values to console to aid debugging if URL is still invalid
-        console.log("Supabase URL being used:", SUPABASE_URL);
-        console.log("Supabase Anon Key being used (first few chars):", SUPABASE_ANON_KEY ? SUPABASE_ANON_KEY.substring(0, 10) + '...' : 'Not provided');
-
-
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let userId = null;
-        let userName = ''; // To store the user's name if they add books
+        let userProfileName = ''; // Stores the authenticated user's display name
 
         // UI Elements
+        const authContainer = document.getElementById('authContainer');
+        const libraryContent = document.getElementById('libraryContent');
         const currentUserIdDisplay = document.getElementById('currentUserId');
+        const currentUserNameDisplay = document.getElementById('currentUserName');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const authErrorDiv = document.getElementById('authError');
+
+        const firstNameInput = document.getElementById('firstNameInput');
+        const lastNameInput = document.getElementById('lastNameInput');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const registerBtn = document.getElementById('registerBtn'); // Renamed from showRegisterBtn
+        const loginBtn = document.getElementById('loginBtn');
+        const registrationFields = document.getElementById('registrationFields');
+        const toggleToLogin = document.getElementById('toggleToLogin');
+        const toggleToRegister = document.getElementById('toggleToRegister');
+
         const bookTitleInput = document.getElementById('bookTitleInput');
         const bookAuthorInput = document.getElementById('bookAuthorInput');
-        const ownerNameInput = document.getElementById('ownerNameInput');
+        const ownerNameInput = document.getElementById('ownerNameInput'); // This will default to userProfileName
         const addBookBtn = document.getElementById('addBookBtn');
         const myBooksList = document.getElementById('myBooksList');
         const noMyBooksMessage = document.getElementById('noMyBooksMessage');
@@ -188,36 +247,198 @@
 
         let currentModalAction = null; // Stores the function to execute on modal confirmation
 
-        // --- Supabase Authentication ---
+        // --- Utility Functions ---
+        function showAuthError(message) {
+            authErrorDiv.textContent = message;
+            authErrorDiv.classList.remove('hidden');
+        }
+
+        function hideAuthError() {
+            authErrorDiv.classList.add('hidden');
+            authErrorDiv.textContent = '';
+        }
+
+        function clearAuthInputs() {
+            firstNameInput.value = '';
+            lastNameInput.value = '';
+            emailInput.value = '';
+            passwordInput.value = '';
+        }
+
+        // --- UI State Management ---
+        function updateUIForAuthenticatedUser(user) {
+            userId = user.id;
+            userProfileName = user.user_metadata?.full_name || user.email || 'User'; // Prioritize full_name if set
+            currentUserIdDisplay.textContent = `User ID: ${userId}`;
+            currentUserNameDisplay.textContent = `Hello, ${userProfileName}!`;
+            ownerNameInput.value = userProfileName; // Pre-fill owner name with logged-in user's name
+
+            authContainer.classList.add('hidden');
+            libraryContent.classList.remove('hidden');
+            logoutBtn.classList.remove('hidden');
+            addBookBtn.disabled = false; // Enable adding books
+
+            hideAuthError();
+            clearAuthInputs(); // Clear auth form inputs after successful login/reg
+
+            setupSupabaseListeners(); // Start listening to data once authenticated
+        }
+
+        function updateUIForLoggedOutUser() {
+            userId = null;
+            userProfileName = '';
+            currentUserIdDisplay.textContent = 'User ID: Not Logged In';
+            currentUserNameDisplay.textContent = 'Hello, Guest!';
+            ownerNameInput.value = '';
+
+            authContainer.classList.remove('hidden');
+            libraryContent.classList.add('hidden');
+            logoutBtn.classList.add('hidden');
+            addBookBtn.disabled = true; // Disable adding books
+
+            // Clear book lists
+            myBooksList.innerHTML = '<p id="noMyBooksMessage" class="text-gray-500 text-center">Please log in to view your books.</p>';
+            availableBooksList.innerHTML = '<p class="text-gray-500 text-center">Please log in to view available books.</p>';
+            myIssuedBooksList.innerHTML = '<p class="text-gray-500 text-center">Please log in to view issued books.</p>';
+            requestNotification.classList.add('hidden'); // Hide notification
+
+            // Stop real-time listeners if subscribed
+            supabase.removeAllSubscriptions(); // Ensure all subscriptions are removed on logout
+        }
+
+        // --- Supabase Authentication Methods ---
         async function initSupabaseAuth() {
-            try {
-                // Try to get current session
-                const { data: { session } } = await supabase.auth.getSession();
+            // Listen for auth state changes
+            supabase.auth.onAuthStateChange((event, session) => {
+                console.log('Auth event:', event, 'Session:', session);
                 if (session) {
-                    userId = session.user.id;
-                    currentUserIdDisplay.textContent = `Your User ID: ${userId}`;
-                    console.log('Signed in as:', userId);
+                    updateUIForAuthenticatedUser(session.user);
                 } else {
-                    // Sign in anonymously if no session exists
-                    const { data, error } = await supabase.auth.signInAnonymously();
-                    if (error) {
-                        console.error('Error signing in anonymously:', error.message);
-                        currentUserIdDisplay.textContent = `Error signing in. Check console.`;
-                        showConfirmationModal(`Error signing in: ${error.message}`, () => {});
-                        return;
-                    }
-                    userId = data.user.id;
-                    currentUserIdDisplay.textContent = `Your User ID: ${userId}`;
-                    console.log('Signed in anonymously as:', userId);
+                    updateUIForLoggedOutUser();
                 }
-                setupSupabaseListeners(); // Start listening to data once authenticated
-            } catch (error) {
-                console.error("Error initializing Supabase Auth:", error);
-                currentUserIdDisplay.textContent = `Error initializing Auth. Check console.`;
+            });
+
+            // Immediately check for a session on load
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                updateUIForAuthenticatedUser(session.user);
+            } else {
+                updateUIForLoggedOutUser();
             }
         }
 
-        // --- Confirmation Modal Functions ---
+        // Register User
+        registerBtn.addEventListener('click', async (e) => { // Renamed from showRegisterBtn
+            e.preventDefault(); // Prevent default form submission if this was a form button
+            hideAuthError();
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+            const firstName = firstNameInput.value.trim();
+            const lastName = lastNameInput.value.trim();
+
+            if (!email || !password || !firstName || !lastName) {
+                showAuthError("Please fill in all fields (First Name, Last Name, Email, Password) to register.");
+                return;
+            }
+            if (password.length < 6) {
+                showAuthError("Password must be at least 6 characters long.");
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            first_name: firstName,
+                            last_name: lastName,
+                            full_name: `${firstName} ${lastName}` // Store full name for convenience
+                        }
+                    }
+                });
+
+                if (error) throw error;
+
+                if (data.user && data.user.identities && data.user.identities.length === 0) {
+                     // This means email verification is required but not yet done.
+                     showConfirmationModal("Registration successful! Please check your email to verify your account and then log in.", () => {});
+                     clearAuthInputs();
+                } else {
+                    showConfirmationModal("Registration successful! You are now logged in.", () => {});
+                    // onAuthStateChange listener will handle updating the UI
+                }
+
+            } catch (error) {
+                console.error('Error during registration:', error);
+                showAuthError(`Registration failed: ${error.message}`);
+            }
+        });
+
+        // Login User
+        loginBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            hideAuthError();
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email || !password) {
+                showAuthError("Please enter your email and password to log in.");
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
+
+                if (error) throw error;
+                showConfirmationModal("Login successful! Welcome back.", () => {});
+                // onAuthStateChange listener will handle updating the UI
+            } catch (error) {
+                console.error('Error during login:', error);
+                showAuthError(`Login failed: ${error.message}`);
+            }
+        });
+
+        // Logout User
+        logoutBtn.addEventListener('click', async () => {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error('Error logging out:', error.message);
+                showConfirmationModal(`Error logging out: ${error.message}`, () => {});
+            } else {
+                showConfirmationModal("Logged out successfully.", () => {});
+                // onAuthStateChange listener will handle updating the UI
+            }
+        });
+
+        // Toggle between Login and Register views
+        toggleToLogin.addEventListener('click', () => {
+            registrationFields.classList.add('hidden');
+            registerBtn.classList.add('hidden'); // Hide Register button
+            loginBtn.classList.remove('hidden'); // Show Login button
+            toggleToLogin.classList.add('hidden');
+            toggleToRegister.classList.remove('hidden');
+            hideAuthError();
+            clearAuthInputs();
+        });
+
+        toggleToRegister.addEventListener('click', () => {
+            registrationFields.classList.remove('hidden');
+            registerBtn.classList.remove('hidden'); // Show Register button
+            loginBtn.classList.add('hidden'); // Hide Login button
+            toggleToLogin.classList.remove('hidden');
+            toggleToRegister.classList.add('hidden');
+            hideAuthError();
+            clearAuthInputs();
+        });
+
+
+        // --- Confirmation Modal Functions (unchanged from previous) ---
         function showConfirmationModal(message, onConfirm) {
             modalMessage.textContent = message;
             confirmationModal.style.display = 'flex';
@@ -240,7 +461,6 @@
             hideConfirmationModal();
         });
 
-        // Close buttons for both modals
         closeModalButtons.forEach(button => {
             button.addEventListener('click', () => {
                 confirmationModal.style.display = 'none';
@@ -258,22 +478,22 @@
         });
 
 
-        // --- Supabase Database Operations ---
+        // --- Supabase Database Operations (adapted for Supabase column names) ---
 
         /**
          * Adds a new book to Supabase.
          */
         addBookBtn.addEventListener('click', async () => {
             if (!userId) {
-                showConfirmationModal("Please wait for authentication to complete.", () => {});
+                showConfirmationModal("You must be logged in to add a book.", () => {});
                 return;
             }
 
             const title = bookTitleInput.value.trim();
             const author = bookAuthorInput.value.trim();
-            userName = ownerNameInput.value.trim(); // Update userName from input
+            const ownerName = ownerNameInput.value.trim(); // This input will be pre-filled with logged-in user's name
 
-            if (!title || !author || !userName) {
+            if (!title || !author || !ownerName) {
                 showConfirmationModal("Please fill in all book details (Title, Author, Your Name).", () => {});
                 return;
             }
@@ -284,7 +504,7 @@
                     .insert([
                         {
                             owner_id: userId,
-                            owner_name: userName,
+                            owner_name: ownerName,
                             book_title: title,
                             book_author: author,
                             status: 'available'
@@ -295,7 +515,7 @@
 
                 bookTitleInput.value = '';
                 bookAuthorInput.value = '';
-                // Keep ownerNameInput value as it might be used repeatedly
+                // ownerNameInput.value will be re-populated by updateUIForAuthenticatedUser or left as is
                 showConfirmationModal("Book added successfully!", () => {});
             } catch (e) {
                 console.error("Error adding book: ", e);
@@ -309,7 +529,7 @@
          */
         async function requestBook(book) {
             if (!userId) {
-                showConfirmationModal("Please wait for authentication to complete.", () => {});
+                showConfirmationModal("You must be logged in to request a book.", () => {});
                 return;
             }
             if (book.status !== 'available') {
@@ -329,7 +549,7 @@
                         .update({
                             status: 'requested',
                             requested_by_person_id: userId,
-                            requested_by_person_name: ownerNameInput.value.trim() || 'Anonymous Requester' // Use ownerNameInput for requester name if set
+                            requested_by_person_name: userProfileName // Use the authenticated user's name
                         })
                         .eq('id', book.id);
 
@@ -345,7 +565,7 @@
                                 owner_id: book.owner_id,
                                 owner_name: book.owner_name,
                                 requester_id: userId,
-                                requester_name: ownerNameInput.value.trim() || 'Anonymous Requester' // Use ownerNameInput for requester name if set
+                                requester_name: userProfileName // Use the authenticated user's name
                             }
                         ]);
 
@@ -490,6 +710,16 @@
 
         // --- Real-time Listeners and UI Rendering ---
         function setupSupabaseListeners() {
+            // Only subscribe if userId is available and not null (i.e., user is logged in)
+            if (!userId) {
+                console.warn("Not subscribing to real-time updates as user is not logged in.");
+                return;
+            }
+
+            // Unsubscribe from previous listeners to avoid duplicates if auth state changes
+            supabase.removeAllSubscriptions();
+
+
             // Listener for all books (real-time changes)
             supabase
                 .from('books')
@@ -517,7 +747,12 @@
          * Fetches and renders all book lists from Supabase.
          */
         async function fetchAndRenderBooks() {
-            if (!userId) return; // Ensure user ID is available
+            if (!userId) {
+                myBooksList.innerHTML = '<p class="text-gray-500 text-center">Please log in to view your books.</p>';
+                availableBooksList.innerHTML = '<p class="text-gray-500 text-center">Please log in to view available books.</p>';
+                myIssuedBooksList.innerHTML = '<p class="text-gray-500 text-center">Please log in to view issued books.</p>';
+                return;
+            }
 
             const { data: books, error } = await supabase
                 .from('books')
@@ -549,7 +784,10 @@
          * Fetches and renders pending requests for the current user.
          */
         async function fetchAndRenderRequests() {
-            if (!userId) return; // Ensure user ID is available
+            if (!userId) {
+                requestNotification.classList.add('hidden'); // Hide notification if not logged in
+                return;
+            }
 
             const { data: requests, error } = await supabase
                 .from('requests')
@@ -590,8 +828,18 @@
             } else {
                 noAvailableBooksMessage.classList.add('hidden');
                 availableBooks.forEach(book => {
-                    availableBooksList.appendChild(createBookCard(book, 'availableForRequest'));
+                    // Only show 'Request Book' button if the book is not owned by the current user
+                    if (book.owner_id !== userId) {
+                        availableBooksList.appendChild(createBookCard(book, 'availableForRequest'));
+                    }
                 });
+                // If after filtering, no books are left for request, show message
+                if (availableBooksList.children.length === 0 && !noAvailableBooksMessage.classList.contains('hidden')) {
+                     noAvailableBooksMessage.classList.remove('hidden');
+                } else if (availableBooksList.children.length > 0) {
+                    noAvailableBooksMessage.classList.add('hidden');
+                }
+
             }
 
             // Render Books Issued To Me
@@ -721,6 +969,12 @@
 
         // Initialize Supabase Authentication on window load
         window.onload = initSupabaseAuth;
+
+        // Set initial view (default to registration form)
+        toggleToLogin.classList.add('hidden'); // Initially hide "Already have an account?"
+        registrationFields.classList.remove('hidden'); // Show registration fields by default
+        loginBtn.classList.add('hidden'); // Hide login button
+        // registerBtn is visible by default (as it's the primary action on load)
     </script>
 </body>
 </html>
